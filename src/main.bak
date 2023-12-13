@@ -1,0 +1,312 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include <U8g2lib.h>
+#include <Adafruit_SSD1306.h>
+#include <adafruit_gfx.h>
+#include <SPI.h>
+#include <SD.h>
+#include <TimeLib.h>
+
+#define OLED_CLOCK 17 
+#define OLED_DATA 20
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, OLED_CLOCK, OLED_DATA, U8X8_PIN_NONE);
+static int oled_LineH = 0;
+
+static bool bLED = LOW;
+
+#define SCREEN_I2C_ADDR 0x3C // or 0x3C
+#define SCREEN_WIDTH 128     // OLED display width, in pixels
+#define SCREEN_HEIGHT 64     // OLED display height, in pixels
+#define OLED_RST_PIN -1      // Reset pin (-1 if not available)
+Adafruit_SSD1306 display(128, 64, &Wire, OLED_RST_PIN);
+
+#define SCK 17
+#define MISO 19
+#define MOSI 23
+#define CS 5
+SPIClass spi = SPIClass(VSPI);
+
+File file;
+const char *file0 = "/";
+
+const byte PROGMEM heartbeat[28][288] = { {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM aircraft[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM bell[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM checkmarkOK[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM clockspin[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM event[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM globe[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM home[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM hourglass[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM noConnection[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM openLetter[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM phoneringing[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM plot[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM sound[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM toggle[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM wifisearch[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM batteryLevel[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM chargedBattery[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM chargingBattery[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM lowBattery[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM gear[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM gears[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM settings[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM cloudyWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM lightningWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM lightningboltWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM lightSnowWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM rainyWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM snowStormWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM stormyWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM sunWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM temperatureWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM torrentialRainWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM windyWeather[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM uninstallingUpdates[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM installingUpdates[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM upload[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM download[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+const byte PROGMEM downArrow[28][288] = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+
+const uint8_t frameCount = 28;
+const int arraySize = 288;
+const uint8_t byteArraySize = 39; // ensure this variable is the same size as the byteArrayAnimation array
+
+struct Frame
+{
+    const byte (*data)[arraySize];
+    String name;
+    const char *fileName;
+};
+
+Frame byteArrayAnimation[39]{
+    {heartbeat, "Heartbeat Pulse", "/heartbeat.bin"},
+    {aircraft, "Aircraft", "/aircraft.bin"},
+    {bell, "Bell", "/bell.bin"},
+    {checkmarkOK, "Checkmark", "/checkmarkOK.bin"},
+    {clockspin, "Clockspin", "/clockspin.bin"},
+    {event, "Event", "/event.bin"},
+    {globe, "Globe", "/globe.bin"},
+    {home, "Home", "/home.bin"},
+    {hourglass, "HourGlass", "/hourglass.bin"},
+    {noConnection, "No Connection", "/noConnection.bin"},
+    {plot, "Plot", "/plot.bin"},
+    {sound, "Sound", "/sound.bin"},
+    {toggle, "Toggle", "/toggle.bin"},
+    {openLetter, "Open Letter", "/openLetter.bin"},
+    {phoneringing, "Phone Rigning", "/phoneringing.bin"},
+    {wifisearch, "WIFI Search", "/wifisearch.bin"},
+    {batteryLevel, "Battery Level", "/batteryLevel.bin"},
+    {chargedBattery, "Charged Battery", "/chargedBattery.bin"},
+    {chargingBattery, "Charging Battery", "/chargingBattery.bin"},
+    {lowBattery, "Low Battery", "/lowBattery.bin"},
+    {gear, "Gear`", "/gear.bin"},
+    {gears, "Gears", "/gears.bin"},
+    {settings, "Settings", "/settings.bin"},
+    {cloudyWeather, "Cloudy Weather", "/cloudyWeather.bin"},
+    {lightSnowWeather, "Light Snow Weather", "/lightSnowWeather.bin"},
+    {lightningWeather, "Lightning Weather", "/lightningWeather.bin"},
+    {lightningboltWeather, "Lightning Bolt Weather", "/lightningboltWeather.bin"},
+    {rainyWeather, "Rainy Weather", "/rainyWeather.bin"},
+    {snowStormWeather, "Snowing Weather", "/snowStormWeather.bin"},
+    {stormyWeather, "Stormy Weather", "/stormyWeather.bin"},
+    {sunWeather, "Suny Weather", "/sunWeather.bin"},
+    {temperatureWeather, "Teamperature Changing", "/temperatureWeather.bin"},
+    {torrentialRainWeather, "Torrential Rain Weather", "/torrentialRainWeather.bin"},
+    {windyWeather, "Windy Weather", "/windyWeather.bin"},
+    {uninstallingUpdates, "Uninstalling Updates", "/uninstallingUpdates.bin"},
+    {installingUpdates, "Installing Updates", "/installingUpdates.bin"},
+    {upload, "UpLoading", "/upload.bin"},
+    {download, "Downloading", "/download.bin"},
+    {downArrow, "DownArraow", "/downArrow.bin"},
+};
+
+void writeByteArrayToFile(const byte (*array)[arraySize], const char *fileArrays)
+{
+    File file = SD.open(fileArrays, FILE_WRITE);
+
+    if (!file)
+    {
+        Serial.println("Could not open file for writing");
+        return;
+    }
+
+    // Write each frame to the file
+    for (int i = 0; i < frameCount; ++i)
+    {
+        file.write(array[i], arraySize);
+    }
+
+    file.close();
+}; // end of writeByteArrayToFile
+
+void CopyArrayStatusToDisplay(uint8_t i)
+{
+    u8g2.clearBuffer();
+    u8g2.home();
+
+    u8g2.setCursor(3, oled_LineH * 2 + 2);
+    u8g2.print(byteArrayAnimation[i].name);
+    u8g2.setCursor(3, oled_LineH * 3 + 2);
+    u8g2.print("has been written to");
+    u8g2.setCursor(3, oled_LineH * 4 + 2);
+    u8g2.print("the SD card.");
+    u8g2.sendBuffer(); // Send it out
+}; // end Copy Array Status to Display function
+
+int fileInput()
+{
+    for (uint8_t i = 0; i < byteArraySize; i++)
+    {
+        writeByteArrayToFile(byteArrayAnimation[i].data, byteArrayAnimation[i].fileName);
+        // Serial.println(byteArrayAnimation[i].name + " has been written to SD card");
+        CopyArrayStatusToDisplay(i);
+        bLED = !bLED; // toggle LED State
+        digitalWrite(LED_BUILTIN, bLED);
+        delay(250);
+    }
+    return 0;
+}; // end of fileInput function
+
+void DrawLinesAndGraphicsFrame(int FramesPerSecond) {
+    u8g2.clearBuffer();
+    u8g2.home();
+
+    u8g2.setCursor(3, oled_LineH * 2 + 2);
+    u8g2.print("Hello");
+    u8g2.setCursor(3, oled_LineH * 3 + 2);
+    u8g2.print("World");
+    u8g2.setCursor(3, oled_LineH * 4 + 2);
+    u8g2.printf("%03d \n", FramesPerSecond); // Placeholder for framerate
+
+    u8g2.drawFrame(0, 0, u8g2.getWidth(), u8g2.getHeight()); // Draw a border around the display
+
+    for (int x = 0; x < u8g2.getWidth(); x += 4) { u8g2.drawLine(x, 0, u8g2.getWidth() - x, u8g2.getHeight()); }
+
+    // Draw a reticle on the right hand side
+    const int reticleY = u8g2.getHeight() / 2;           // Vertical center of display
+    const int reticleR = u8g2.getHeight() / 4 - 2;       // Slightly less than 1/4 screen height
+    const int reticleX = u8g2.getWidth() - reticleR - 8; // Right-justified with a small margin
+
+    for (int r = reticleR; r > 0; r -= 3) {
+        u8g2.drawCircle(reticleX, reticleY, r);
+        u8g2.drawHLine(reticleX - reticleR - 5, reticleY, 2 * reticleR + 10); // H line through reticle center
+        u8g2.drawVLine(reticleX, reticleY - reticleR - 5, 2 * reticleR + 10); // V line through reticle center
+    }
+    u8g2.sendBuffer(); // Send it out
+}; // end draw lines, graphics function
+
+double FramesPerSecond(double seconds)
+{
+    static double framesPerSecond;
+    framesPerSecond = (framesPerSecond * 0.9) + (1.0 / seconds * 0.1);
+    return framesPerSecond;
+}; // end FramesPerSecond function
+
+void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
+    Serial.printf("Listing directory: %s\n", dirname);
+
+    File root = fs.open(dirname);
+    if (!root) {
+        Serial.println("Failed to open directory");
+        return;
+    }
+    if (!root.isDirectory()) {
+        Serial.println("Not a directory");
+        return;
+    }
+
+    File file = root.openNextFile();
+    while (file) {
+        if (file.isDirectory()) {
+            Serial.print("  DIR : ");
+            Serial.println(file.name());
+            if (levels) {
+                listDir(fs, file.name(), levels - 1);
+            }
+        }
+        else {
+            Serial.print("  FILE: ");
+            Serial.print(file.name());
+            Serial.print("  SIZE: ");
+            Serial.println(file.size());
+        }
+        file = root.openNextFile();
+    }
+}; // end listDir function
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println("Starting setup");
+    pinMode(LED_BUILTIN, OUTPUT); // relying on GPIO2 LED to light up on MB
+
+    u8g2.begin();
+    u8g2.clear();
+    u8g2.setFont(u8g2_font_profont10_tf);
+    oled_LineH = u8g2.getFontAscent() + u8g2.getFontAscent();
+
+    display.begin(SSD1306_SWITCHCAPVCC, SCREEN_I2C_ADDR);
+    display.clearDisplay();
+
+    if (!SD.begin(CS))
+    {
+        Serial.println("SD Initialization failed!");
+        return;
+    }
+    Serial.println("SD Initialization done.");
+
+    spi.begin(SCK, MISO, MOSI, CS);
+    uint8_t cardType = SD.cardType();
+
+    if (cardType == CARD_NONE)
+    {
+        Serial.println("No SD card attached");
+        return;
+    }
+
+    Serial.print("SD Card Type: ");
+    if (cardType == CARD_MMC)
+    {
+        Serial.println("MMC");
+    }
+    else if (cardType == CARD_SD)
+    {
+        Serial.println("SDSC");
+    }
+    else if (cardType == CARD_SDHC)
+    {
+        Serial.println("SDHC");
+    }
+    else
+    {
+        Serial.println("UNKNOWN");
+    }
+
+    uint64_t cardSize = SD.cardSize() / (1024 * 1024);
+    Serial.printf("SD Card Size: %lluMB\n", cardSize);
+
+    setTime(15, 00, 00, 12, 12, 2023);
+
+    Serial.println("Setup complete");
+};
+
+void loop() {
+    Serial.println("SD Card content before function");
+    listDir(SD, file0, 0);
+
+    fileInput();
+
+    Serial.println("SD Card content after function");
+    listDir(SD, file0, 0);
+
+    int fps = 0;
+    for (;;) {
+        bLED = !bLED; // toggle LED State
+        digitalWrite(LED_BUILTIN, bLED);
+        double dStart = millis() / 1000.0; // record the start time
+        DrawLinesAndGraphicsFrame(fps);
+        double dEnd = millis() / 1000.0; // record the completion time
+        fps = FramesPerSecond(dEnd - dStart);
+    }
+};
