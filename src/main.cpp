@@ -23,8 +23,9 @@
 #include <SD.h>
 #include <TimeLib.h>
 
-#define OLED_CLOCK 17                                                                    // SCA pin on Display = SCL on ESP32
-#define OLED_DATA 20                                                                     // SDL pin on display = SDA on ESP32
+#define OLED_CLOCK 22 // SCA pin on Display = pin 17 (I2C_SCL) on ESP32 = GPIO 22
+#define OLED_DATA 21  // SDL pin on display = pin 20 (I2C_SDA) on ESP32 = GPIO 21
+
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, OLED_CLOCK, OLED_DATA, U8X8_PIN_NONE); // This works but according to the function, it shouldn't
 static uint8_t oled_LineH = 0;
 
@@ -37,10 +38,10 @@ static bool bLED = LOW;
 
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RST_PIN);
 
-#define SCK 17
-#define MISO 19
-#define MOSI 23
-#define CS 5
+#define SCK 18  // GPIO 18 = VSPI_CLK
+#define MISO 19 // GPIO 19 = VSPI_MISO
+#define MOSI 23 // GPIO 23 = VSPI_MOSI
+#define CS 5    // GPIO 5 = VSPI_CS
 
 // if using SD library
 File file;
